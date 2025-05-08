@@ -14,7 +14,7 @@ jobs:
         with:
           script: |
             const creator = context.payload.pull_request.user.login;
-            const blockedWords = ['stupid', 'idiot'];
+            const blockedWords = ['redhat', 'idiot'];
             const isBlocked = blockedWords.some(word => creator.toLowerCase().includes(word));
             core.setOutput('creator', creator);
             core.setOutput('is_blocked', isBlocked);
