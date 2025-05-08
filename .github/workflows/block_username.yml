@@ -1,6 +1,10 @@
+# File: .github/workflows/blocked_username.yml
 # This workflow checks the username of the pull request author.
 # If the username matches a blocked pattern, it automatically adds a comment
 # to the PR and then closes it.
+# This workflow's runs will be automatically approved by the 'auto_approve_blocked_username_runs.yml' 
+# workflow if pending, triggered by this workflow being requested.
+
 name: Auto-Close PR for Blocked Usernames
 
 on:
@@ -50,3 +54,41 @@ jobs:
             # Exit with zero status to indicate the check passed.
             exit 0
           fi
+---
+# File: .github/workflows/auto_approve_blocked_username_runs.yml
+# This workflow is triggered when the 'Auto-Close PR for Blocked Usernames' workflow is requested.
+# It then uses mheap/automatic-approve-action to approve that specific workflow run if it's pending approval.
+# This helps to bypass the manual "approve run" step in the Actions tab more immediately.
+
+name: Automatic Approve Blocked Username Runs # Renamed for clarity
+
+on:
+  workflow_run:
+    # This targets the 'name' of the workflow defined in blocked_username.yml
+    workflows: ["Auto-Close PR for Blocked Usernames"] 
+    # Triggers when the target workflow is requested (i.e., a new run is created)
+    types: [requested] 
+
+jobs:
+  automatic-approve:
+    name: Automatic Approve Blocked Username Runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Automatic Approve
+        uses: mheap/automatic-approve-action@v1
+        with:
+          # IMPORTANT: This Personal Access Token (PAT) must have 'repo' scope 
+          # (or 'actions:write' and 'workflow' if using fine-grained PATs).
+          # It needs to be created by a user with admin/write access to the repository
+          # and stored as a repository secret (e.g., named PAT).
+          # The default GITHUB_TOKEN does NOT have permission to approve workflow runs.
+          token: ${{ secrets.PAT }}
+
+          # Specify the filename(s) of the workflow(s) whose runs you want to auto-approve.
+          # This should still be the filename of your PR-closing workflow.
+          workflows: "blocked_username.yml" 
+
+          # Optional: You can add more configurations for the mheap/automatic-approve-action
+          # Refer to its documentation: https://github.com/mheap/automatic-approve-action
+          # For example, to only approve runs from first-time contributors:
+          # first_time_contributor_only: true 
