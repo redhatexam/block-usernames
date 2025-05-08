@@ -1,21 +1,52 @@
-name: Block Usernames
+# This workflow checks the username of the pull request author.
+# If the username matches a blocked pattern, it automatically adds a comment
+# to the PR and then closes it.
+name: Auto-Close PR for Blocked Usernames
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# Grant permissions for the GITHUB_TOKEN to write to pull requests (to close them and comment)
+permissions:
+  pull-requests: write
+
 jobs:
-  check_username:
+  check_and_close_pr_if_blocked:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Check if username is blocked
-        run: |
-          blocked_pattern=".*redhat.*"
-          author_username="${{ github.event.pull_request.user.login }}"
 
-          if [[ "$author_username" =~ $blocked_pattern ]]; then
-            echo "::error::Pull requests from users containing 'redhat' in their name are not allowed (found: $author_username)."
-            exit 1
+      - name: Check username and close PR if blocked
+        # The GitHub CLI (gh) is pre-installed on GitHub-hosted runners.
+        # We pass the GITHUB_TOKEN and PR_NUMBER as environment variables for gh.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AUTHOR_USERNAME: ${{ github.event.pull_request.user.login }}
+        run: |
+          # Define the pattern for usernames that should be blocked.
+          # Example: any username containing "redhat"
+          blocked_pattern=".*redhat.*" 
+          
+          echo "Checking PR #${PR_NUMBER} from user: ${AUTHOR_USERNAME}"
+          echo "Blocked pattern: '${blocked_pattern}'"
+
+          if [[ "${AUTHOR_USERNAME}" =~ $blocked_pattern ]]; then
+            echo "::error::User '${AUTHOR_USERNAME}' matches blocked pattern '${blocked_pattern}'."
+            echo "Closing pull request #${PR_NUMBER}."
+            
+            # Add a comment to the PR explaining why it's being closed
+            gh pr comment "${PR_NUMBER}" --body "This pull request has been automatically closed because the author's username ('${AUTHOR_USERNAME}') matches a blocked pattern. If you believe this is an error, please contact a repository administrator."
+            
+            # Close the pull request
+            gh pr close "${PR_NUMBER}"
+            
+            # Exit with a non-zero status to indicate the workflow took a blocking action and failed the check.
+            exit 1 
+          else
+            echo "Username '${AUTHOR_USERNAME}' is not blocked. PR #${PR_NUMBER} can proceed."
+            # Exit with zero status to indicate the check passed.
+            exit 0
           fi
