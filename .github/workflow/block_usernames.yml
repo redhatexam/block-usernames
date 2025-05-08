@@ -1,4 +1,4 @@
-name: Block Usernames
+name: Block Usernames TEST
 
 on:
   pull_request:
