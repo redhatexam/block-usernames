@@ -1,0 +1,21 @@
+name: Block Usernames
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check_username:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check if username is blocked
+        run: |
+          blocked_pattern=".*redhat.*"
+          author_username="${{ github.event.pull_request.user.login }}"
+
+          if [[ "$author_username" =~ $blocked_pattern ]]; then
+            echo "::error::Pull requests from users containing 'redhat' in their name are not allowed (found: $author_username)."
+            exit 1
+          fi
